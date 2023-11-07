@@ -1,3 +1,4 @@
+// import { boolean } from "joi";
 import mongoose, { Schema, Types, model } from "mongoose";
 
 const MessageSchema = new Schema(
@@ -18,6 +19,11 @@ const MessageSchema = new Schema(
       type: Types.ObjectId,
       required: true,
       ref: "user",
+    },
+
+    isSeen: {
+      type: Boolean,
+      default: false,
     },
 
     attachment: {

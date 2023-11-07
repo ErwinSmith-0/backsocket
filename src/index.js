@@ -28,10 +28,6 @@ app.use(API_PreFix, AuthRouters);
 connectDB();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-console.log("__filename");
-console.log(__filename);
-console.log("__dirname");
-console.log(__dirname);
 app.use(express.static(`${__dirname}/../Uploads`));
 const server = createServer(app);
 const io = new Server(server, {
@@ -39,13 +35,12 @@ const io = new Server(server, {
     origin: "http://localhost:3000",
     credentials: true,
   },
+  maxHttpBufferSize: 1e8,
 });
 
 io.on("connection", (socket) => {
-  console.log("a user connected");
   let foundRoomData;
   socket.on("join_room", async (roomId) => {
-    console.log("joinroom");
     socket.join(roomId.toString());
     foundRoomData = await roomModel
       .findOne({
@@ -53,19 +48,17 @@ io.on("connection", (socket) => {
       })
       .populate({ path: "messages", populate: { path: "attachment" } });
 
-    // io.in(roomId.toString()).emit("receive_message", foundRoomData.messages);
     io.in(roomId.toString()).emit("update_messages", foundRoomData.messages);
   });
 
   socket.on("send_message", async (message) => {
-    console.log(message);
     let foundRoomData = await roomModel
       .findOne({
         _id: message.room,
       })
       .populate({
         path: "messages",
-        select: "room sender receiver text attachment",
+        select: "room sender receiver text attachment isSeen",
         populate: {
           path: "attachment",
           model: "fileUpload",
@@ -74,15 +67,12 @@ io.on("connection", (socket) => {
 
     if (foundRoomData) {
       if (message.attachment.fileName !== "") {
-        console.log("message.attachment");
         const attachment = {
           fileName: message.attachment.fileName,
           fileType: message.attachment.fileType,
         };
-        console.log("attachmentDataattachmentDataattachmentData");
         const attachmentData = await fileUploadModel.create(attachment);
-        console.log("attachmentData");
-        console.log(attachmentData);
+
         const file = message.attachment.fileData;
         writeFile(
           `${__dirname}../../Uploads/${attachment.fileName}`,
@@ -110,7 +100,7 @@ io.on("connection", (socket) => {
           })
           .populate({
             path: "messages",
-            select: "room sender receiver text attachment",
+            select: "room sender receiver text attachment isSeen",
             populate: {
               path: "attachment",
               model: "fileUpload",
@@ -123,6 +113,35 @@ io.on("connection", (socket) => {
         );
       }
     }
+  });
+
+  socket.on("typing", async (roomId, typer) => {
+    io.in(roomId.toString()).emit("user_typing", typer);
+  });
+
+  socket.on("nottyping", async (roomId) => {
+    io.in(roomId.toString()).emit("stop_typing");
+  });
+
+  socket.on("update_seen_message", async (message) => {
+    await messageModel.findOneAndUpdate({ _id: message._id }, { isSeen: true });
+    foundRoomData = await roomModel
+      .findOne({
+        _id: message.room,
+      })
+      .populate({
+        path: "messages",
+        select: "room sender receiver text attachment isSeen",
+        populate: {
+          path: "attachment",
+          model: "fileUpload",
+        },
+      });
+    // console.log(message);
+    io.in(message.room.toString()).emit(
+      "update_messages",
+      foundRoomData.messages
+    );
   });
 });
 
