@@ -32,22 +32,28 @@ app.use(express.static(`${__dirname}/../Uploads`));
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: "*",
     credentials: true,
   },
   maxHttpBufferSize: 1e8,
 });
 
 io.on("connection", (socket) => {
-  let foundRoomData;
   socket.on("join_room", async (roomId) => {
     socket.join(roomId.toString());
-    foundRoomData = await roomModel
+    let foundRoomData = await roomModel
       .findOne({
         _id: roomId,
       })
-      .populate({ path: "messages", populate: { path: "attachment" } });
-
+      .populate({
+        path: "messages",
+        select:
+          "room sender receiver text attachment isSeen isDeleted isEdited",
+        populate: {
+          path: "attachment",
+          model: "fileUpload",
+        },
+      });
     io.in(roomId.toString()).emit("update_messages", foundRoomData.messages);
   });
 
@@ -58,7 +64,8 @@ io.on("connection", (socket) => {
       })
       .populate({
         path: "messages",
-        select: "room sender receiver text attachment isSeen",
+        select:
+          "room sender receiver text attachment isSeen isDeleted isEdited",
         populate: {
           path: "attachment",
           model: "fileUpload",
@@ -100,7 +107,8 @@ io.on("connection", (socket) => {
           })
           .populate({
             path: "messages",
-            select: "room sender receiver text attachment isSeen",
+            select:
+              "room sender receiver text attachment isSeen isDeleted isEdited",
             populate: {
               path: "attachment",
               model: "fileUpload",
@@ -125,13 +133,14 @@ io.on("connection", (socket) => {
 
   socket.on("update_seen_message", async (message) => {
     await messageModel.findOneAndUpdate({ _id: message._id }, { isSeen: true });
-    foundRoomData = await roomModel
+    let foundRoomData = await roomModel
       .findOne({
         _id: message.room,
       })
       .populate({
         path: "messages",
-        select: "room sender receiver text attachment isSeen",
+        select:
+          "room sender receiver text attachment isSeen isDeleted isEdited",
         populate: {
           path: "attachment",
           model: "fileUpload",
@@ -142,6 +151,54 @@ io.on("connection", (socket) => {
       "update_messages",
       foundRoomData.messages
     );
+  });
+
+  socket.on("delete_msg", async (messageId, room) => {
+    let MegData = await messageModel.findOneAndUpdate(
+      { _id: messageId },
+      { isDeleted: true }
+    );
+    if (MegData) {
+      let foundRoomData = await roomModel
+        .findOne({
+          _id: room,
+        })
+        .populate({
+          path: "messages",
+          select:
+            "room sender receiver text attachment isSeen isDeleted isEdited",
+          populate: {
+            path: "attachment",
+            model: "fileUpload",
+          },
+        });
+
+      io.in(room.toString()).emit("update_messages", foundRoomData.messages);
+    }
+  });
+
+  socket.on("edit_msg", async (messageId, room, txt) => {
+    let MegData = await messageModel.findOneAndUpdate(
+      { _id: messageId },
+      { text: txt, isEdited: true }
+    );
+    if (MegData) {
+      let foundRoomData = await roomModel
+        .findOne({
+          _id: room,
+        })
+        .populate({
+          path: "messages",
+          select:
+            "room sender receiver text attachment isSeen isDeleted isEdited",
+          populate: {
+            path: "attachment",
+            model: "fileUpload",
+          },
+        });
+
+      io.in(room.toString()).emit("update_messages", foundRoomData.messages);
+    }
   });
 });
 

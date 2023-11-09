@@ -71,31 +71,27 @@ const room = async (req, res, next) => {
   try {
     const { sender, receiver } = req.body;
 
-    let room = await roomModel.findOne({
-      sender,
-      receiver,
-    });
+    let room = await roomModel.findOne({ sender: sender, receiver: receiver });
+
     if (!room) {
-      room = await roomModel.findOne({
-        sender: receiver,
-        receiver: sender,
-      });
+      room = await roomModel.findOne({ sender: receiver, receiver: sender });
+
       if (!room) {
-        console.log("yeeeeeeeeep");
         const roomData = {
-          sender,
-          receiver,
+          sender: sender,
+          receiver: receiver,
         };
-        room = new roomModel(roomData);
-        await room.save();
+        room = await roomModel.create(roomData);
+        // await room.save();
         return res
           .status(201)
           .json({ success: true, data: room, message: "Room created" });
       }
     }
+
     return res
       .status(201)
-      .json({ success: true, data: room, message: "Room Exist" });
+      .json({ success: true, data: room, message: "Room exist" });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
   }

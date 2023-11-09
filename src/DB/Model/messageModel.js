@@ -26,6 +26,16 @@ const MessageSchema = new Schema(
       default: false,
     },
 
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+
+    isEdited: {
+      type: Boolean,
+      default: false,
+    },
+
     attachment: {
       type: Types.ObjectId,
       required: false,
