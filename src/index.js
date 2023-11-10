@@ -47,8 +47,6 @@ io.on("connection", (socket) => {
       })
       .populate({
         path: "messages",
-        select:
-          "room sender receiver text attachment isSeen isDeleted isEdited",
         populate: {
           path: "attachment",
           model: "fileUpload",
@@ -58,14 +56,13 @@ io.on("connection", (socket) => {
   });
 
   socket.on("send_message", async (message) => {
+    console.log("send_message");
     let foundRoomData = await roomModel
       .findOne({
         _id: message.room,
       })
       .populate({
         path: "messages",
-        select:
-          "room sender receiver text attachment isSeen isDeleted isEdited",
         populate: {
           path: "attachment",
           model: "fileUpload",
@@ -107,8 +104,6 @@ io.on("connection", (socket) => {
           })
           .populate({
             path: "messages",
-            select:
-              "room sender receiver text attachment isSeen isDeleted isEdited",
             populate: {
               path: "attachment",
               model: "fileUpload",
@@ -139,8 +134,6 @@ io.on("connection", (socket) => {
       })
       .populate({
         path: "messages",
-        select:
-          "room sender receiver text attachment isSeen isDeleted isEdited",
         populate: {
           path: "attachment",
           model: "fileUpload",
@@ -165,8 +158,6 @@ io.on("connection", (socket) => {
         })
         .populate({
           path: "messages",
-          select:
-            "room sender receiver text attachment isSeen isDeleted isEdited",
           populate: {
             path: "attachment",
             model: "fileUpload",
@@ -189,8 +180,6 @@ io.on("connection", (socket) => {
         })
         .populate({
           path: "messages",
-          select:
-            "room sender receiver text attachment isSeen isDeleted isEdited",
           populate: {
             path: "attachment",
             model: "fileUpload",
@@ -198,6 +187,61 @@ io.on("connection", (socket) => {
         });
 
       io.in(room.toString()).emit("update_messages", foundRoomData.messages);
+    }
+  });
+
+  socket.on("delete_room", async (roomId, userId) => {
+    console.log("deleteroom");
+    try {
+      console.log(roomId);
+      let foundRoomData = await roomModel
+        .findOne({
+          _id: roomId,
+        })
+        .populate({
+          path: "messages",
+          populate: {
+            path: "attachment",
+            model: "fileUpload",
+          },
+        });
+      // console.log("foundRoomData");
+      // console.log(foundRoomData);
+      let MegData;
+      foundRoomData.messages.map(async (e) => {
+        if (!e.deletedByUser1) {
+          MegData = await messageModel.findByIdAndUpdate(
+            { _id: e._id },
+            { deletedByUser1: userId }
+          );
+        } else if (e.deletedByUser1 && !e.deletedByUser2) {
+          MegData = await messageModel.findByIdAndUpdate(
+            { _id: e._id },
+            { deletedByUser2: userId }
+          );
+        }
+        // let MegData=await messageModel.find({_id:e._id});
+        // console.log("MegData");
+        // console.log(MegData);
+      });
+
+      foundRoomData = await roomModel
+        .findOne({
+          _id: roomId,
+        })
+        .populate({
+          path: "messages",
+          populate: {
+            path: "attachment",
+            model: "fileUpload",
+          },
+        });
+      console.log("foundRoomData");
+      console.log(foundRoomData);
+      io.in(roomId.toString()).emit("update_messages", foundRoomData.messages);
+    } catch (error) {
+      console.log("error");
+      console.log(error);
     }
   });
 });

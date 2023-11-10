@@ -36,6 +36,18 @@ const MessageSchema = new Schema(
       default: false,
     },
 
+    deletedByUser1: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: false,
+      ref: "user",
+    },
+
+    deletedByUser2: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: false,
+      ref: "user",
+    },
+
     attachment: {
       type: Types.ObjectId,
       required: false,
