@@ -1,9 +1,12 @@
 import multer from "multer";
 import path from "path";
+
+// console.log(path);
+console.log("path");
 // import { dirname } from "./FilePath.js";
 export const Storage = multer.diskStorage({
   destination: (req, file, callback) => {
-    callback(null, path.join("/public/Uploads"));
+    callback(null, "Uploads");
   },
   filename: (req, file, callback) => {
     const fileName = file.originalname.split(" ").join("-");
@@ -12,7 +15,6 @@ export const Storage = multer.diskStorage({
     callback(null, baseName + "-" + Date.now() + extension);
   },
 });
-
 export const handleMultipartData = multer({
   storage: Storage,
   limits: {
